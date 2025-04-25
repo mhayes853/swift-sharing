@@ -66,11 +66,19 @@ public struct LoadContinuation<Value>: Sendable {
 /// A subscriber is passed to ``SharedReaderKey/subscribe(context:subscriber:)`` so that updates to
 /// an external system can be shared.
 public struct SharedSubscriber<Value>: Sendable {
-  let callback: @Sendable (Result<Value?, any Error>) -> Void
+  let callback: @Sendable (Result<Value?, any Error>, Bool) -> Void
   let onLoading: (@Sendable (Bool) -> Void)?
 
   public init(
     callback: @escaping @Sendable (Result<Value?, any Error>) -> Void,
+    onLoading: (@Sendable (Bool) -> Void)? = nil
+  ) {
+    self.callback = { result, _ in callback(result) }
+    self.onLoading = onLoading
+  }
+
+  public init(
+    callback: @escaping @Sendable (Result<Value?, any Error>, Bool) -> Void,
     onLoading: (@Sendable (Bool) -> Void)? = nil
   ) {
     self.callback = callback
@@ -80,8 +88,8 @@ public struct SharedSubscriber<Value>: Sendable {
   /// Yield an updated value from an external source.
   ///
   /// - Parameter value: An updated value.
-  public func yield(_ value: Value) {
-    yield(with: .success(value))
+  public func yield(_ value: Value, isLoading: Bool = false) {
+    yield(with: .success(value), isLoading: isLoading)
   }
 
   /// Yield a loading state from an external source.
@@ -96,22 +104,22 @@ public struct SharedSubscriber<Value>: Sendable {
   ///
   /// This method can be invoked when the external system detects that the associated value was
   /// deleted and the associated shared key should revert back to its default.
-  public func yieldReturningInitialValue() {
-    yield(with: .success(nil))
+  public func yieldReturningInitialValue(isLoading: Bool = false) {
+    yield(with: .success(nil), isLoading: isLoading)
   }
 
   /// Yield an error from an external source.
   ///
   /// - Parameter error: An error.
-  public func yield(throwing error: any Error) {
-    yield(with: .failure(error))
+  public func yield(throwing error: any Error, isLoading: Bool = false) {
+    yield(with: .failure(error), isLoading: isLoading)
   }
 
   /// Yield a result of an updated value or error from an external source.
   ///
   /// - Parameter result: A result of an updated value or error.
-  public func yield(with result: Result<Value?, any Error>) {
-    callback(result)
+  public func yield(with result: Result<Value?, any Error>, isLoading: Bool = false) {
+    callback(result, isLoading)
   }
 }
 

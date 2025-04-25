@@ -87,6 +87,28 @@ import Testing
     #expect(value == 42)
   }
 
+  @Test func isLoadingSubcriberYieldValueWithoutResetting() {
+    struct Key: SharedReaderKey {
+      let id = UUID()
+      let testScheduler: TestSchedulerOf<DispatchQueue>
+      func load(context: LoadContext<Int>, continuation: LoadContinuation<Int>) {
+        continuation.resumeReturningInitialValue()
+      }
+      func subscribe(
+        context: LoadContext<Int>, subscriber: SharedSubscriber<Int>
+      ) -> SharedSubscription {
+        subscriber.yieldLoading()
+        testScheduler.schedule { subscriber.yield(with: .success(42), isLoading: true) }
+        return SharedSubscription {}
+      }
+    }
+    @SharedReader(Key(testScheduler: testScheduler)) var value = 0
+    #expect($value.isLoading == true)
+    testScheduler.advance()
+    #expect($value.isLoading == true)
+    #expect(value == 42)
+  }
+
   @Test func isLoadingSubcriberYieldIsLoading() {
     struct Key: SharedReaderKey {
       let id = UUID()

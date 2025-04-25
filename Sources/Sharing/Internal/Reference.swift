@@ -200,9 +200,10 @@ final class _PersistentReference<Key: SharedReaderKey>:
   init(key: Key, value initialValue: Key.Value, skipInitialLoad: Bool) {
     self.key = key
     self.value = initialValue
-    let callback: @Sendable (Result<Value?, any Error>) -> Void = { [weak self] result in
+    let callback: @Sendable (Result<Value?, any Error>, Bool) -> Void = {
+      [weak self] result, isLoading in
       guard let self else { return }
-      isLoading = false
+      self.isLoading = isLoading
       switch result {
       case let .failure(error):
         loadError = error
@@ -215,7 +216,7 @@ final class _PersistentReference<Key: SharedReaderKey>:
       isLoading = true
       key.load(
         context: .initialValue(initialValue),
-        continuation: LoadContinuation("\(key)", callback: callback)
+        continuation: LoadContinuation("\(key)", callback: { callback($0, false) })
       )
     }
     let context: LoadContext<Key.Value> =
